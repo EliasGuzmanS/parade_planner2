@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Wise</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Exo:wght@400;600;700&family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --nasa-blue-dark: #000033; --nasa-blue-light: #0d2a71; --nasa-red: #fc3d21;
+            --nasa-yellow: #fdb927; --nasa-white: #ffffff; --nasa-light-gray: #e0e0e0;
+            --nasa-medium-gray: #999999; --background-color: var(--nasa-blue-dark);
+            --card-color: var(--nasa-blue-light); --border-color: var(--nasa-light-gray);
+            --text-color: var(--nasa-white); --text-muted-color: var(--nasa-medium-gray);
+            --primary-color: var(--nasa-red); --success-color: #adff2f;
+            --danger-color: var(--nasa-red); --danger-bg: rgba(252, 61, 33, 0.2);
+            --warning-color: var(--nasa-yellow); --warning-bg: rgba(253, 185, 39, 0.2);
+            --info-color: #6bb0ff; --info-bg: rgba(107, 176, 255, 0.2);
+            --secondary-color-alert: var(--nasa-medium-gray); --secondary-bg: rgba(153, 153, 153, 0.2);
+        }
+        body {
+            font-family: 'Exo', sans-serif; 
+            background: linear-gradient(135deg, var(--nasa-blue-dark) 0%, var(--nasa-blue-light) 100%);
+            color: var(--text-color); margin: 0; padding: 20px;
+        }
+        .container { max-width: 1200px; width: 100%; margin: auto; }
+        header {
+            text-align: center; margin-bottom: 20px; padding: 20px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1); position: relative;
+        }
+        header h1 {
+            font-family: 'Orbitron', sans-serif; font-size: 2.5rem; margin: 0;
+            color: var(--nasa-white); text-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
+        }
+        .header-logo { width: 70px; height: auto; position: absolute; top: 50%; left: 20px; transform: translateY(-50%); }
+        .card {
+            background-color: rgba(13, 42, 113, 0.6); backdrop-filter: blur(5px);
+            border-radius: 12px; padding: 25px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1); margin-bottom: 25px;
+        }
+        .card h2 {
+            font-size: 1.4rem; color: var(--nasa-white); margin-top: 0; margin-bottom: 18px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 12px;
+            display: flex; align-items: center; font-family: 'Orbitron', sans-serif;
+        }
+        .card h2 i { margin-right: 12px; color: var(--nasa-red); }
+        .content-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 25px; }
+        @media (max-width: 992px) { .content-grid { grid-template-columns: 1fr; } }
+        #map-placeholder { height: 400px; border-radius: 8px; margin-bottom: 15px; border: 1px solid var(--nasa-red); }
+        .input-group { margin-bottom: 18px; }
+        .input-group label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.95rem; color: var(--nasa-light-gray); }
+        input[type="date"], input[type="text"] {
+            width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 6px;
+            border: 1px solid var(--nasa-medium-gray); background-color: rgba(255, 255, 255, 0.08);
+            color: var(--nasa-white); font-size: 0.95rem; transition: border-color 0.2s, background-color 0.2s;
+        }
+        input[type="date"]:focus, input[type="text"]:focus { border-color: var(--nasa-red); background-color: rgba(255, 255, 255, 0.15); outline: none; }
+        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
+        .btn {
+            display: block; width: 100%; padding: 14px; font-size: 1.1rem; font-weight: bold;
+            color: var(--nasa-blue-dark); background-color: var(--nasa-red); border: none;
+            border-radius: 8px; cursor: pointer; transition: background-color 0.2s, transform 0.1s;
+        }
+        .btn:hover { background-color: var(--nasa-yellow); color: var(--nasa-blue-dark); transform: translateY(-2px); }
+        .btn:disabled { background-color: var(--nasa-medium-gray); cursor: not-allowed; color: rgba(0,0,0,0.5); transform: none;}
+        .pleasant-score-container { text-align: center; padding: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); margin-bottom: 20px; }
+        .pleasant-score-label { font-size: 1rem; text-transform: uppercase; color: var(--nasa-medium-gray); margin-bottom: 10px; }
+        .pleasant-score-value { font-family: 'Orbitron', sans-serif; font-size: 4rem; font-weight: 700; color: var(--success-color); line-height: 1; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 15px; }
+        .stat-item { text-align: center; background-color: rgba(0, 0, 0, 0.2); padding: 10px; border-radius: 8px; }
+        .stat-item .label { font-size: 0.8rem; color: var(--nasa-medium-gray); text-transform: uppercase; margin-bottom: 5px; }
+        .stat-item .value { font-size: 1.8rem; font-weight: 700; color: var(--nasa-white); line-height: 1.2; }
+        .map-info { font-size: 0.88rem; color: var(--nasa-medium-gray); display: flex; justify-content: space-between; margin-top: 10px; }
+        .map-info strong { color: var(--nasa-white); font-weight: 600; }
+        #alert-box { border-radius: 8px; padding: 18px; margin-top: 25px; display: none; }
+        #alert-box h3 { margin-top: 0; font-size: 1.1rem; font-weight: bold; }
+        #alert-box p { margin-bottom: 0; font-size: 0.95rem; color: var(--text-color);}
+        #alert-box.danger { background-color: var(--danger-bg); border-left: 5px solid var(--danger-color); color: var(--danger-color); }
+        #alert-box.warning { background-color: var(--warning-bg); border-left: 5px solid var(--warning-color); color: var(--warning-color); }
+        #alert-box.info { background-color: var(--info-bg); border-left: 5px solid var(--info-color); color: var(--info-color); }
+        #alert-box.secondary { background-color: var(--secondary-bg); border-left: 5px solid var(--secondary-color-alert); color: var(--secondary-color-alert); }
+        #history-list { list-style: none; padding: 0; margin: 0; max-height: 250px; overflow-y: auto; border-radius: 8px; background-color: rgba(0, 0, 0, 0.1); }
+        #history-list li { padding: 12px 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); cursor: pointer; transition: background-color 0.2s; border-left: 5px solid transparent; }
+        #history-list li:hover { background-color: rgba(255, 255, 255, 0.15); }
+        #history-list li.danger { border-left-color: var(--danger-color); }
+        #history-list li.warning { border-left-color: var(--warning-color); }
+        #history-list li.info { border-left-color: var(--info-color); }
+        #history-list li.secondary { border-left-color: var(--secondary-color-alert); }
+        #history-list li.success { border-left-color: var(--success-color); }
+        #history-list .event-title { font-weight: 600; color: var(--nasa-white); font-size: 1rem; }
+        #history-list .event-details { font-size: 0.8rem; color: var(--nasa-medium-gray); margin-top: 3px;}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <img src="{{ url_for('static', filename='icon.png') }}" alt="NASA Logo" class="header-logo">
+            <h1>Weather Wise</h1>
+        </header>
+        <div class="content-grid">
+            <div>
+                <section class="card" id="global-map-card">
+                    <h2><i class="fas fa-map-marker-alt"></i> Mapa de Selección</h2>
+                    <div id="map-placeholder"></div>
+                    <div class="map-info">
+                        <span>UBICACIÓN: <strong id="location-name-display">Cargando...</strong></span>
+                        <span id="coordinates-display">--,--</span>
+                    </div>
+                </section>
+                <section class="card" id="query-card">
+                    <h2><i class="fas fa-calendar-alt"></i> Consultar Clima Histórico</h2>
+                    <div class="input-group"><label for="event-title">Nombre del Evento</label><input type="text" id="event-title" placeholder="Ej: Cumpleaños de Ana"></div>
+                    <div class="input-group"><label for="future-date-picker">Selecciona una fecha:</label><input type="date" id="future-date-picker"></div>
+                    <button class="btn" id="analyze-button">Consultar Clima Histórico</button>
+                </section>
+            </div>
+            <div>
+                <section class="card" id="historical-averages-card">
+                    <h2><i class="fas fa-chart-line"></i> Análisis Histórico (20 Años)</h2>
+                    <div id="results-placeholder"><p>Selecciona una fecha para ver el análisis.</p></div>
+                    <div id="results-display" style="display: none;">
+                        <div class="pleasant-score-container">
+                            <div class="pleasant-score-label">Índice de Clima Agradable</div>
+                            <div class="pleasant-score-value" id="pleasant-score-display">--</div>
+                        </div>
+                        <div class="stats-grid">
+                            <div class="stat-item"><div class="label">Mín Histórico</div><div class="value" id="min-temp-display">-- °C</div></div>
+                            <div class="stat-item"><div class="label">Máx Promedio</div><div class="value" id="avg-temp-display">-- °C</div></div>
+                            <div class="stat-item"><div class="label">Máx Histórico</div><div class="value" id="max-temp-display">-- °C</div></div>
+                            <div class="stat-item"><div class="label">Precip. Promedio</div><div class="value" id="avg-precip-display">-- mm</div></div>
+                            <div class="stat-item"><div class="label">Viento Promedio</div><div class="value" id="avg-wind-display">-- km/h</div></div>
+                        </div>
+                        <div id="alert-box">
+                            <h3 id="alert-title"></h3>
+                            <p id="alert-recommendation"></p>
+                        </div>
+                    </div>
+                </section>
+                 <section class="card" id="history-card">
+                    <h2><i class="fas fa-history"></i> Historial de Búsquedas</h2>
+                    <ul id="history-list"></ul>
+                </section>
+            </div>
+        </div>
+    </div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/static/script.js"></script>
+</body>
+</html>
